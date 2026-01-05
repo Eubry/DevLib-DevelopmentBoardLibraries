@@ -46,6 +46,20 @@ Basic LED blinking example demonstrating digital output.
 - Arduino board
 - Built-in LED (or external LED with 220Ω resistor)
 
+### CounterExample
+Demonstrates the Counter library with counting and timing functionality.
+
+**Hardware Required:**
+- Arduino board
+- Built-in LED
+
+**Features:**
+- Event counting with cCount class
+- Timing operations with cTime class
+- Flag management
+- Callback functionality
+- Serial output monitoring
+
 ### SerialCommunication
 Demonstrates serial communication between Arduino and computer.
 

@@ -16,6 +16,41 @@ Common libraries are designed to:
 
 ## 📚 Available Libraries
 
+### Counter
+A powerful counter and timer library providing precise counting and timing functionality.
+
+**Features:**
+- **cCount**: Count-based event management with flag control
+- **cTime**: Microsecond-precision timing for ESP32 (millisecond fallback for other platforms)
+- Automatic goal change detection
+- Start/finish state tracking
+- Callback support with templates
+- Reset functionality
+
+**Classes:**
+- `cCount` - Event counter with configurable goals and flag management
+- `cTime` - High-precision timer with microsecond accuracy (ESP32)
+
+**Example:**
+```cpp
+#include "counter.h"
+
+cCount counter;
+cTime timer;
+
+void loop() {
+  counter.count(10);  // Count to 10
+  if (counter.finish()) {
+    // Execute when count reaches 10
+  }
+  
+  timer.wait(1000000);  // Wait 1 second (microseconds)
+  if (timer.finish()) {
+    // Execute every second
+  }
+}
+```
+
 ### Utils
 A utility library providing common functions for all platforms.
 

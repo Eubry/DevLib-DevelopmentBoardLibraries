@@ -59,6 +59,21 @@ Basic LED blinking example for ESP32.
 - Digital output control
 - Serial debugging
 
+### CounterExample
+Demonstrates the Counter library with high-precision ESP32 timing.
+
+**Hardware Required:**
+- ESP32 development board
+- Built-in LED (GPIO2)
+
+**Features:**
+- High-precision microsecond timing using esp_timer
+- Event counting with cCount class
+- Precise timing with cTime class
+- Flag management
+- Callback functionality
+- Real-time serial monitoring
+
 ### WiFiScan
 Scans and displays available WiFi networks.
 
