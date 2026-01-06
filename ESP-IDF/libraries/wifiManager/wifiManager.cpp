@@ -143,6 +143,17 @@ void wifiConnection::wifiEventHandler(void* arg, esp_event_base_t event_base,
                 ip_event_got_ip_t* event = static_cast<ip_event_got_ip_t*>(event_data);
                 ESP_LOGI("wConnection", "Got IP:" IPSTR, IP2STR(&event->ip_info.ip));
                 instance->_retryCount = 0;
+                
+                // Initialize mDNS to publish hostname
+                esp_err_t err = mdns_init();
+                if (err == ESP_OK) {
+                    mdns_hostname_set(instance->_hostname.c_str());
+                    mdns_instance_name_set(instance->_hostname.c_str());
+                    ESP_LOGI("wConnection", "mDNS hostname published: %s.local", instance->_hostname.c_str());
+                } else {
+                    ESP_LOGW("wConnection", "Failed to initialize mDNS: %s", esp_err_to_name(err));
+                }
+                
                 xEventGroupSetBits(instance->_wifiEventGroup, WIFI_CONNECTED_BIT);
                 break;
             }

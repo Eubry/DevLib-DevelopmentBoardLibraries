@@ -7,6 +7,7 @@
 #include "esp_wifi.h"        // ESP-IDF WiFi
 #include "esp_netif.h"       // Network interface
 #include "lwip/sockets.h"    // For socket-based clients
+#include "mdns.h"            // mDNS for hostname resolution
 
 #include "esp_event.h"
 #include "nvs_flash.h"
