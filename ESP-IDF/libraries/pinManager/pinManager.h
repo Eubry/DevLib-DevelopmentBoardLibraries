@@ -1,9 +1,11 @@
 #pragma once
-#include <map>
-#include <string>
+#include "esp_err.h"// Include ESP error codes
+#include "esp_log.h"// Add ESP logging support
 #include "driver/gpio.h"
 #include "driver/ledc.h"
-#include "../counter/counter.h"
+#include "Counter.h"
+#include <map>
+#include <string>
 
 class pinManager{
     private:

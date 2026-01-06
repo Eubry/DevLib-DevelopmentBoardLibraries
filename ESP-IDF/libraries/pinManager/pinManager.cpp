@@ -1,5 +1,4 @@
-#include "pinManagement.h"
-#include "esp_log.h"
+#include "pinManager.h"
 
 #define PIN_TAG "PinManager"
 
