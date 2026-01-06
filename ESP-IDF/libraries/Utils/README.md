@@ -12,17 +12,38 @@ This library provides ESP-IDF framework utilities that leverage FreeRTOS and ESP
 
 A comprehensive FreeRTOS task management system with the following capabilities:
 
-- **Task Creation**: Create tasks with custom parameters
+- **Task Creation**: Create tasks with custom parameters using `add()`
 - **Core Affinity**: Pin tasks to specific CPU cores (0 or 1)
 - **Priority Control**: Set task priorities (0-24)
 - **Stack Management**: Configure stack size per task
-- **Watchdog Integration**: Automatic watchdog timer management
-- **Task Lifecycle**: Safe task creation and deletion
-- **Task Registry**: Named task tracking and lookup
+- **Watchdog Integration**: Automatic watchdog timer registration and management
+  - Tasks are automatically added to watchdog on creation via `esp_task_wdt_add()`
+  - Global watchdog reset via `resetWatchdog()` using `esp_task_wdt_reset()`
+  - Automatic watchdog cleanup on task deletion via `esp_task_wdt_delete()`
+- **Task Lifecycle**: Safe task creation and deletion with proper cleanup
+- **Task Registry**: Named task tracking via internal `std::map<std::string, taskStruct>`
+- **Automatic Cleanup**: Destructor ensures all tasks are properly deleted
+
+### Public Methods
+
+- `add()` - Create and start a new task with watchdog registration
+- `del()` - Delete a task with automatic watchdog unsubscription  
+- `resetWatchdog()` - Reset global watchdog timer (validates task exists first)
+
+### taskManager Destructor
+
+The destructor automatically cleans up all managed tasks when the taskManager instance is destroyed.
+
+**Behavior:**
+- Iterates through all tasks in internal map
+- Unsubscribes each task from watchdog timer
+- Deletes all FreeRTOS tasks
+- Clears internal task map
+- Logs deletion of each task
 
 ### Helper Functions
 
-- **inMap()**: Check if a key exists in a std::map
+- **inMap()**: Template function to check if a key exists in a std::map
 
 ## Installation
 
@@ -143,15 +164,21 @@ void add(const std::string& name,
          uint32_t stackSize = 1024)
 ```
 
-Creates and starts a new FreeRTOS task with watchdog integration.
+Creates and starts a new FreeRTOS task with automatic watchdog integration.
 
 **Parameters:**
-- `name` - Unique task identifier
+- `name` - Unique task identifier (used for task tracking and watchdog management)
 - `taskFunc` - Task function pointer (must have signature `void taskFunc(void*)`)
-- `param` - Optional parameter to pass to the task
-- `priority` - Task priority (0-24, higher = more priority)
-- `core` - CPU core to run on (0 or 1, or `tskNO_AFFINITY` for any core)
-- `stackSize` - Stack size in bytes (minimum 1024, typical 2048-4096)
+- `param` - Optional parameter to pass to the task (default: NULL)
+- `priority` - Task priority (0-24, higher = more priority, default: 1)
+- `core` - CPU core to run on (0 or 1, default: 0)
+- `stackSize` - Stack size in bytes (default: 1024, typical: 2048-4096)
+
+**Behavior:**
+- Creates task using `xTaskCreatePinnedToCore()`
+- Automatically registers task with watchdog timer (`esp_task_wdt_add()`)
+- Stores task information in internal map for management
+- Logs creation status (success/failure) via ESP_LOG
 
 **Example:**
 ```cpp
@@ -164,10 +191,17 @@ tasks.add("myTask", myTaskFunction, NULL, 5, 1, 4096);
 void del(const std::string& name)
 ```
 
-Safely deletes a task by name, including watchdog cleanup.
+Safely deletes a task by name, including automatic watchdog cleanup.
 
 **Parameters:**
 - `name` - Name of the task to delete
+
+**Behavior:**
+- Checks if task exists in internal map
+- Unsubscribes task from watchdog timer (`esp_task_wdt_delete()`)
+- Deletes the FreeRTOS task (`vTaskDelete()`)
+- Removes task from internal tracking map
+- Logs deletion status or error if task not found
 
 **Example:**
 ```cpp
@@ -180,31 +214,49 @@ tasks.del("myTask");
 void resetWatchdog(const std::string& name)
 ```
 
-Resets the watchdog timer for a specific task. Should be called periodically within the task's main loop.
+Resets the watchdog timer for a specific task. Should be called periodically within the task's main loop to prevent watchdog timeout.
 
 **Parameters:**
 - `name` - Name of the task to reset watchdog for
+
+**Behavior:**
+- Verifies task exists in internal map
+- Calls `esp_task_wdt_reset()` to reset the global watchdog timer
+- Logs warning if reset fails
+- Logs error if task not found
+
+**Important:** This resets the global watchdog, so call it from within your task loop at regular intervals.
 
 **Example:**
 ```cpp
 void myTask(void* param) {
     while(1) {
-        // Do work...
-        tasks.resetWatchdog("myTask");
-        vTaskDelay(pdMS_TO_TICKS(100));
-    }
-}
+inline bool inMap(const std::string& key, const std::map<std::string, T>& myMap)
 ```
 
-### Utils::inMap()
+Template helper function that checks if a key exists in a std::map.
 
+**Parameters:**
+- `key` - The key to search for
+- `myMap` - The map to search in (const reference)
+
+**Returns:** `true` if key exists, `false` otherwise
+
+**Template Parameter:**
+- `T` - The value type of the map (automatically deduced)
+
+**Implementation:** Uses `find()` and compares against `end()` iterator
+
+**Example:**
 ```cpp
-template<typename T>
-bool inMap(const std::string& key, const std::map<std::string, T>& myMap)
-```
+std::map<std::string, int> data = {{"sensor1", 100}};
+if (Utils::inMap("sensor1", data)) {
+    // Key exists - safe to access data["sensor1"]
+}
 
-Checks if a key exists in a std::map.
-
+std::map<std::string, std::string> config = {{"wifi", "enabled"}};
+if (Utils::inMap("mqtt", config)) {
+    // This will be false - mqtt not in config
 **Parameters:**
 - `key` - The key to search for
 - `myMap` - The map to search in
@@ -253,15 +305,38 @@ ESP32 has two cores (PRO_CPU and APP_CPU):
 
 ## Error Handling
 
-The library uses ESP-IDF logging to report:
-- Task creation success/failure
-- Watchdog registration status
-- Task deletion confirmation
+The library uses ESP-IDF logging (ESP_LOG) to report status and errors:
+- **ESP_LOGI**: Task creation success, task deletion confirmation
+- **ESP_LOGE**: Task creation failure, task not found errors
+- **ESP_LOGW**: Watchdog operation warnings (subscription/unsubscription failures)
+
+All logs are tagged with "TASK_MANAGER" for easy filtering.
 
 Monitor serial output with:
 ```bash
 idf.py monitor
 ```
+
+## Internal Implementation Details
+
+### taskStruct
+
+Internal structure used to track task information:
+```cpp
+struct taskStruct {
+    TaskHandle_t handle;        // FreeRTOS task handle
+    std::string name;           // Task name
+    void* param;                // Task parameter (default: NULL)
+    UBaseType_t priority;       // Task priority (default: 1)
+    BaseType_t core;            // CPU core affinity (default: 0)
+    uint32_t stackSize;         // Stack size in bytes (default: 1024)
+};
+```
+
+### Private Members
+
+- `_taskMap`: `std::map<std::string, taskStruct>` - Stores all managed tasks indexed by name
+- `statusTask()`: Private method that logs task creation success/failure
 
 ## Requirements
 
