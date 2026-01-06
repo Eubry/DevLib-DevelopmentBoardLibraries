@@ -18,7 +18,7 @@
 extern wifi_init_config_t wconfig;
 extern wifi_mode_t currentWiFiMode;
 //-------------------------------------
-class wConnection{
+class wifiConnection{
     private:
         std::string _ssid;
         std::string _password;
@@ -31,9 +31,9 @@ class wConnection{
         static void wifiEventHandler(void* arg, esp_event_base_t event_base,
                                      int32_t event_id, void* event_data);
     public:
-        wConnection(std::string ssid, std::string password, uint8_t maxRetries=5);
+        wifiConnection(std::string ssid, std::string password, uint8_t maxRetries=5);
         esp_err_t begin(wifi_mode_t mode=WIFI_MODE_STA);
         bool isConnected();
         esp_err_t stop();
-        ~wConnection();
+        ~wifiConnection();
 };

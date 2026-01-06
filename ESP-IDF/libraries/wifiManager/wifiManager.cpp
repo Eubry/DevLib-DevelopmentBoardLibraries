@@ -5,11 +5,11 @@ wifi_init_config_t wconfig;
 wifi_mode_t currentWiFiMode = WIFI_MODE_NULL;
 
 //-------------------------------------
-wConnection::wConnection(std::string ssid, std::string password, uint8_t maxRetries)
+wifiConnection::wifiConnection(std::string ssid, std::string password, uint8_t maxRetries)
 : _ssid(ssid), _password(password), _maxRetries(maxRetries), _retryCount(0), _wifiMode(WIFI_MODE_NULL) {
     _wifiEventGroup = xEventGroupCreate();
 }
-esp_err_t wConnection::begin(wifi_mode_t mode){
+esp_err_t wifiConnection::begin(wifi_mode_t mode){
     _wifiMode = mode;
     esp_err_t ret;
 
@@ -47,12 +47,12 @@ esp_err_t wConnection::begin(wifi_mode_t mode){
     // Register event handler
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
                                                         ESP_EVENT_ANY_ID,
-                                                        &wConnection::wifiEventHandler,
+                                                        &wifiConnection::wifiEventHandler,
                                                         this,
                                                         nullptr));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
                                                         IP_EVENT_STA_GOT_IP,
-                                                        &wConnection::wifiEventHandler,
+                                                        &wifiConnection::wifiEventHandler,
                                                         this,
                                                         nullptr));
 
@@ -102,9 +102,9 @@ esp_err_t wConnection::begin(wifi_mode_t mode){
         return ESP_ERR_INVALID_STATE;
     }
 }
-void wConnection::wifiEventHandler(void* arg, esp_event_base_t event_base,
+void wifiConnection::wifiEventHandler(void* arg, esp_event_base_t event_base,
                                   int32_t event_id, void* event_data) {
-    wConnection* instance = static_cast<wConnection*>(arg);
+    wifiConnection* instance = static_cast<wifiConnection*>(arg);
     if (event_base == WIFI_EVENT) {
         switch (event_id) {
             case WIFI_EVENT_STA_START:
@@ -140,19 +140,19 @@ void wConnection::wifiEventHandler(void* arg, esp_event_base_t event_base,
         }
     }
 }
-bool wConnection::isConnected() {
+bool wifiConnection::isConnected() {
     EventBits_t bits = xEventGroupGetBits(_wifiEventGroup);
     return (bits & WIFI_CONNECTED_BIT) != 0;
 }
-esp_err_t wConnection::stop() {
+esp_err_t wifiConnection::stop() {
     ESP_ERROR_CHECK(esp_wifi_stop());
     ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, nullptr));
     ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, nullptr));
     vEventGroupDelete(_wifiEventGroup);
-    ESP_LOGI("wConnection", "WiFi stopped.");
+    ESP_LOGI("wifiConnection", "WiFi stopped.");
     return ESP_OK;
 }
-wConnection::~wConnection() {
+wifiConnection::~wifiConnection() {
     stop();
 }
 //-------------------------------------

@@ -3,7 +3,8 @@
 
 #if __has_include("stdint.h")
 #include <stdint.h>
-#elif __has_include(<utility>)
+#endif
+#if __has_include(<utility>)
 #include <utility>
 #endif
 #if __has_include("esp_timer.h")
